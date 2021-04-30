@@ -63,7 +63,6 @@ class BBBDownloader:
 
   def download(self, url, destination):
     """downloads file from url with progress hook and returns filepath"""
-    print(url)
     opener = urllib.request.URLopener()
     opener.addheader('User-Agent', 'whatever')
     filename, headers = opener.retrieve(url, destination, reporthook=self.progress_callback)
