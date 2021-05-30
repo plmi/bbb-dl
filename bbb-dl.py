@@ -38,43 +38,27 @@ class BBBDownloader:
   def webcams_url(self):
     return f'{self.host}presentation/{self.meeting_id}/video/webcams.webm'
 
-  def download_deskshare(self):
-    """downloads deskshare.web and returns the filepath"""
-    return self.download(self.deskshare_url, 'deskshare.webm')
+  def __download(self, url, destination):
+    """downloads file from url with progress hook and returns filepath"""
+    opener = urllib.request.URLopener()
+    opener.addheader('User-Agent', 'whatever')
+    filename, headers = opener.retrieve(url, destination, reporthook=self.__progress_callback)
+    return filename
 
-  def download_webcams(self):
-    """downloads webcams.web and returns the filepath"""
-    return self.download(self.webcams_url, 'webcams.webm')
-
-  def download_slides(self, url):
-    """downloads all images of a slideshow and returns an array of all slides"""
-    content = self.get_images(url)
-    slides = self.create_slides(content)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-      executor.map(self.download_image, slides)
-    return slides
-
-  def download_image(self, slide):
+  def __download_image(self, slide):
     """downloads slide to disk"""
     response = requests.get(self.host + slide.url)
     print('Process slide ..: ' + slide.name, end='\r')
     with open(f'{slide.name}.png', 'wb') as f:
       f.write(response.content)
 
-  def download(self, url, destination):
-    """downloads file from url with progress hook and returns filepath"""
-    opener = urllib.request.URLopener()
-    opener.addheader('User-Agent', 'whatever')
-    filename, headers = opener.retrieve(url, destination, reporthook=self.progress_callback)
-    return filename
-
-  def progress_callback(self, block, block_size, remote_size):
+  def __progress_callback(self, block, block_size, remote_size):
      percent = 100.0 * block *block_size /remote_size
      if percent > 100:
          percent = 100
      print('Downloading: %.2f%%' % percent, end='\r')
 
-  def get_images(self, url):
+  def __get_images(self, url):
     """crawls meeting page for all images of the slideshow"""
     content = None
     # canvas not available with regular GET request
@@ -89,7 +73,7 @@ class BBBDownloader:
       browser.close()
     return content
 
-  def create_slides(self, content):
+  def __create_slides(self, content):
     """creates array of slide objects from html source"""
     soup = BeautifulSoup(content, 'html.parser')
     slides = []
@@ -101,6 +85,22 @@ class BBBDownloader:
         break
       slide = Slide(image.get('id'), duration, image.get('xlink:href'))
       slides.append(slide)
+    return slides
+
+  def download_deskshare(self):
+    """downloads deskshare.web and returns the filepath"""
+    return self.__download(self.deskshare_url, 'deskshare.webm')
+
+  def download_webcams(self):
+    """downloads webcams.web and returns the filepath"""
+    return self.__download(self.webcams_url, 'webcams.webm')
+
+  def download_slides(self, url):
+    """downloads all images of a slideshow and returns an array of all slides"""
+    content = self.__get_images(url)
+    slides = self.__create_slides(content)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+      executor.map(self.__download_image, slides)
     return slides
 
 class Ffmpeg:
