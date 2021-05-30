@@ -36,7 +36,7 @@ class BBBDownloader:
 
   def __download_image(self, slide):
     """downloads slide to disk"""
-    response = requests.get(self.host + slide.url)
+    response = requests.get(self.host + slide.source)
     print('Process slide ..: ' + slide.name, end='\r')
     with open(f'{slide.name}.png', 'wb') as f:
       f.write(response.content)
@@ -47,7 +47,7 @@ class BBBDownloader:
          percent = 100
      print('Downloading: %.2f%%' % percent, end='\r')
 
-  def __get_images(self, url):
+  def __crawl_images(self, url):
     """crawls meeting page for all images of the slideshow"""
     content = None
     # canvas not available with regular GET request
@@ -67,12 +67,9 @@ class BBBDownloader:
     soup = BeautifulSoup(content, 'html.parser')
     slides = []
     for image in soup.find_all('image'):
-      duration = math.ceil(float(image.get('out')) - float(image.get('in')))
-      # TODO: one of the last images is as
-      # long as the whole slideshow?
-      if duration > 4000:
-        break
-      slide = Slide(image.get('id'), duration, image.get('xlink:href'))
+      start = float(image.get('in')) * 1000
+      end = float(image.get('out')) * 1000
+      slide = Slide(image.get('id'), image.get('xlink:href'), start, end)
       slides.append(slide)
     return slides
 
@@ -84,9 +81,9 @@ class BBBDownloader:
     """downloads webcams.web and returns the filepath"""
     return self.__download(self.webcams_url, 'webcams.webm')
 
-  def download_slides(self, url):
+  def download_slides(self):
     """downloads all images of a slideshow and returns an array of all slides"""
-    content = self.__get_images(url)
+    content = self.__crawl_images(self.url)
     slides = self.__create_slides(content)
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
       executor.map(self.__download_image, slides)
