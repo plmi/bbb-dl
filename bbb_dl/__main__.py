@@ -15,12 +15,7 @@ import urllib.request
 import concurrent.futures
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
-
-class Slide:
-  def __init__(self, name, duration, url):
-    self.name = name
-    self.duration = duration
-    self.url = url
+from .models.slide import Slide
 
 class BBBDownloader:
   """This implementation provides methods for downloading audio, deskshare and slides
