@@ -10,11 +10,11 @@ import math
 import glob
 import requests
 import warnings
-import subprocess
 import urllib.request
 import concurrent.futures
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
+import bbb_dl.ffmpeg as ffmpeg
 from .models.slide import Slide
 
 class BBBDownloader:
@@ -98,32 +98,6 @@ class BBBDownloader:
       executor.map(self.__download_image, slides)
     return slides
 
-class Ffmpeg:
-
-  def demux_audio(self, media_file):
-    """extract audio stream from video container"""
-    filename = 'audio.opus'
-    subprocess.call(['ffmpeg', '-i', media_file, '-vn', '-acodec', 'copy', filename], stderr=subprocess.DEVNULL)
-    return filename
-
-  def mux_video_audio(self, video_file, audio_file):
-    """merge an audio and video stream into media container"""
-    filename = 'output.mp4'
-    subprocess.call(['ffmpeg', '-i', video_file, '-i', audio_file, '-strict', '-2', '-c', 'copy', filename])
-    return filename
-
-  def concat_videos(self, file_list):
-    """merge multiple videos into one sequence"""
-    filename = 'concat.mkv'
-    subprocess.call(['ffmpeg', '-f', 'concat', '-i', f'{file_list}', '-c', 'copy', filename], stderr=subprocess.DEVNULL)
-    return filename
-
-  def convert_image_to_video(self, input_image, duration, output_file):
-    """creates video from image of specified duration"""
-    subprocess.call(['ffmpeg', '-framerate', f'1/{duration}', '-i', input_image, '-c:v', \
-      'libx264', '-preset', 'fast', '-r', '10', '-pix_fmt', 'yuv420p', output_file])
-    return output_file
-
 def print_usage():
   print(f'url missing')
   print(f'usage: {sys.argv[0]} [url]')
@@ -165,7 +139,6 @@ def entry_point():
     print_usage()
     sys.exit(1)
 
-  ffmpeg = Ffmpeg()
   bbb_dl = BBBDownloader(sys.argv[1])
   video = None
   if is_deskshare_available(bbb_dl.deskshare_url):
