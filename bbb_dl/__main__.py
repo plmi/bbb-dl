@@ -118,13 +118,11 @@ class Ffmpeg:
     subprocess.call(['ffmpeg', '-f', 'concat', '-i', f'{file_list}', '-c', 'copy', filename], stderr=subprocess.DEVNULL)
     return filename
 
-  def create_slideshow(self, slide):
-    """creates video of given duration from a slide"""
-    filename = f'{slide.name}.mp4'
-    print(f'create {filename} ..')
-    subprocess.call(['ffmpeg', '-framerate', f'1/{slide.duration}', '-i', f'{slide.name}.png', '-c:v', \
-      'libx264', '-preset', 'fast', '-r', '10', '-pix_fmt', 'yuv420p', filename], stderr=subprocess.DEVNULL)
-    return filename
+  def convert_image_to_video(self, input_image, duration, output_file):
+    """creates video from image of specified duration"""
+    subprocess.call(['ffmpeg', '-framerate', f'1/{duration}', '-i', input_image, '-c:v', \
+      'libx264', '-preset', 'fast', '-r', '10', '-pix_fmt', 'yuv420p', output_file])
+    return output_file
 
 def print_usage():
   print(f'url missing')
@@ -177,8 +175,8 @@ def entry_point():
     print('slides found..')
     slides = bbb_dl.download_slides(sys.argv[1])
     print('create slideshow...')
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-      executor.map(ffmpeg.create_slideshow, slides)
+    for slide in slides:
+      ffmpeg.convert_image_to_video(f'{slide.name}.png', slide.duration, f'{slide.name}.mp4')
     playlist = 'playlist.txt'
     create_playlist(slides, playlist)
     video = ffmpeg.concat_videos(playlist)
